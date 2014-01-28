@@ -37,6 +37,8 @@ elif [[ $areyouready == "y" ]]; then
         tempfile=$(mktemp -d -t tmp)
         echo "Working in temporary folder $tempfile"
         echo "Student ID,FirstName,LastName,Building,Homeroom," > $tempfile/createdusers$(date +%Y%m%d).csv
+        echo "Checking \"$CSVfile\" for DOS line endings and replacing them with Unix compatible line endings..."
+        sed -i -e 's/^M$//' $CSVfile
     
     OLDIFS="$IFS"
     IFS=','
