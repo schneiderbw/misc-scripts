@@ -37,8 +37,8 @@ elif [[ $areyouready == "y" ]]; then
         tempfile=$(mktemp -d -t tmp)
         echo "Working in temporary folder $tempfile"
         echo "Student ID,FirstName,LastName,Building,Homeroom," > $tempfile/createdusers$(date +%Y%m%d).csv
-        echo "Checking \"$CSVfile\" for DOS line endings and replacing them with Unix compatible line endings..."
-        sed -i -e 's/^M$//' "$CSVfile"
+        echo "Attempting to remove any DOS-style line breaks"
+        ## sed -i -e 's/^M$/\r/g' "$CSVfile"
     
     OLDIFS="$IFS"
     IFS=','
@@ -58,13 +58,13 @@ elif [[ $areyouready == "y" ]]; then
             Building="EPE"
             buildinghome="epHomes"
             homeserver="elserver"
-            homevol="EL_Server_HD2"
+            homevol="EL_Server_HD3"
             schoolgroup="epe"
         elif [ $BuildingCode == $(echo "R168") ]; then
             Building="SBE"
             buildinghome="sbHomes"
             homeserver="elserver"
-            homevol="EL_Server_HD2"
+            homevol="EL_Server_HD3"
             schoolgroup="sbe"
         fi
         echo "Validating $UserName for account creation"
@@ -91,6 +91,10 @@ elif [[ $areyouready == "y" ]]; then
                 dscl -u diradmin -P $diradminpwd /LDAPv3/$ServerName -create /Users/$UserName
                 dscl -u diradmin -P $diradminpwd /LDAPv3/$ServerName -create /Users/$UserName UserShell /bin/bash
                 dscl -u diradmin -P $diradminpwd /LDAPv3/$ServerName -create /Users/$UserName RealName "$LastName, $FirstName"
+                dscl -u diradmin -P $diradminpwd /LDAPv3/$ServerName -create /Users/$UserName FirstName "$FirstName"
+                dscl -u diradmin -P $diradminpwd /LDAPv3/$ServerName -create /Users/$UserName LastName "$LastName"
+                dscl -u diradmin -P $diradminpwd /LDAPv3/$ServerName -create /Users/$UserName EMailAddress "$UserName@students.sbepschools.org"
+                dscl -u diradmin -P $diradminpwd /LDAPv3/$ServerName -create /Users/$UserName WeblogURI $(md5 <<< $SID)
                 dscl -u diradmin -P $diradminpwd /LDAPv3/$ServerName -create /Users/$UserName UniqueID $SID
                 dscl -u diradmin -P $diradminpwd /LDAPv3/$ServerName -passwd /Users/$UserName $SID
                 dscl -u diradmin -P $diradminpwd /LDAPv3/$ServerName -create /Users/$UserName PrimaryGroupID 20
@@ -106,8 +110,8 @@ elif [[ $areyouready == "y" ]]; then
                         else
                         dscl -u diradmin -P $diradminpwd /LDAPv3/$ServerName -create /Users/$UserName HomeDirectory "<home_dir><url>afp://$homeserver.sbepschools.org/$buildinghome</url><path>$UserName</path></home_dir>"
                 fi
-		dseditgroup -o edit -n /LDAPv3/$ServerName -a $UserName -t user $schoolgroup
-                pwpolicy -a diradmin -p $diradminpwd -u $UserName -setpolicy "isDisabled=1 canModifyPasswordforSelf=1"
+                dseditgroup -o edit -n /LDAPv3/$ServerName -a $UserName -t user $schoolgroup
+                pwpolicy -a diradmin -p $diradminpwd -u $UserName -setpolicy "isDisabled=0 canModifyPasswordforSelf=0"
                 echo -e "$LastName, $FirstName $Building $Homeroom" >> $tempfile/createdODuser.txt
                 echo -e "$SID,$FirstName,$LastName,$Building,$Homeroom," >> $tempfile/createdusers$(date +%Y%m%d).csv
                 echo "Created user: $LastName, $FirstName"
