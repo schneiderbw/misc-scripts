@@ -46,7 +46,12 @@ elif [[ $areyouready == "y" ]]; then
     do
         PreUserName="$LastName$FirstName"
         UserName=$(echo "$PreUserName" | sed s/[^a-zA-Z\-]/""/g | tr '[A-Z]' '[a-z]')
-        pregradyear=$(expr 12 - $Grade)
+        isnumber='^[0-9]+$'
+        if ! [[ $Grade =~ $isnumber ]] ; then
+            pregradyear=12
+        elif [[ $Grade =~ $isnumber ]] ; then
+            pregradyear=$(expr 12 - $Grade)
+        fi
         gradyear=$(expr $pregradyear + $schoolyear + 1)
         if [ $BuildingCode == $(echo "R165") ]; then
             Building="HS"
@@ -69,53 +74,48 @@ elif [[ $areyouready == "y" ]]; then
         fi
         echo "Validating $UserName for account creation"
         checkusername=$(dscl /LDAPv3/$ServerName -list /Users | grep "$UserName")
-        isnumber='^[0-9]+$'
-        if ! [[ $Grade =~ $isnumber ]]; then
-            echo "The user $UserName was not be created because the user is too young."
-        else
-            if [[ $checkusername == $UserName ]]; then
-                    echo "User $UserName Already Exists..."
-                    echo "Updating User Record..."
-                    if [[ $BuildingCode == $(echo "R167") ]] || [[ $BuildingCode == $(echo "R168") ]]; then
-                                homedir="$buildinghome/$UserName"
-                        elif [ $BuildingCode == $(echo "R165") ]; then
-                                homedir="$buildinghome/$gradyear/$UserName"
-                fi
-                dscl -u diradmin -P $diradminpwd /LDAPv3/$ServerName -create /Users/$UserName NFSHomeDirectory "/Network/Servers/$homeserver.sbepschools.org/Volumes/$homevol/$homedir"
-                if [[ $BuildingCode == $(echo "R165") ]]; then 
-                        dscl -u diradmin -P $diradminpwd /LDAPv3/$ServerName -create /Users/$UserName HomeDirectory "<home_dir><url>afp://$homeserver.sbepschools.org/$buildinghome</url><path>$gradyear/$UserName</path></home_dir>"
-                        else
-                        dscl -u diradmin -P $diradminpwd /LDAPv3/$ServerName -create /Users/$UserName HomeDirectory "<home_dir><url>afp://$homeserver.sbepschools.org/$buildinghome</url><path>$UserName</path></home_dir>"
-                fi
-            else
-                dscl -u diradmin -P $diradminpwd /LDAPv3/$ServerName -create /Users/$UserName
-                dscl -u diradmin -P $diradminpwd /LDAPv3/$ServerName -create /Users/$UserName UserShell /bin/bash
-                dscl -u diradmin -P $diradminpwd /LDAPv3/$ServerName -create /Users/$UserName RealName "$LastName, $FirstName"
-                dscl -u diradmin -P $diradminpwd /LDAPv3/$ServerName -create /Users/$UserName FirstName "$FirstName"
-                dscl -u diradmin -P $diradminpwd /LDAPv3/$ServerName -create /Users/$UserName LastName "$LastName"
-                dscl -u diradmin -P $diradminpwd /LDAPv3/$ServerName -create /Users/$UserName EMailAddress "$UserName@students.sbepschools.org"
-                dscl -u diradmin -P $diradminpwd /LDAPv3/$ServerName -create /Users/$UserName WeblogURI $(md5 <<< $SID)
-                dscl -u diradmin -P $diradminpwd /LDAPv3/$ServerName -create /Users/$UserName UniqueID $SID
-                dscl -u diradmin -P $diradminpwd /LDAPv3/$ServerName -passwd /Users/$UserName $SID
-                dscl -u diradmin -P $diradminpwd /LDAPv3/$ServerName -create /Users/$UserName PrimaryGroupID 20
-                dscl -u diradmin -P $diradminpwd /LDAPv3/$ServerName -create /Users/$UserName Keywords $Homeroom $Grade $BuildingCode $Building
+        if [[ $checkusername == $UserName ]]; then
+                echo "User $UserName Already Exists..."
+                echo "Updating User Record..."
                 if [[ $BuildingCode == $(echo "R167") ]] || [[ $BuildingCode == $(echo "R168") ]]; then
-                                homedir="$buildinghome/$UserName"
-                        elif [ $BuildingCode == $(echo "R165") ]; then
-                                homedir="$buildinghome/$gradyear/$UserName"
-                fi
-                dscl -u diradmin -P $diradminpwd /LDAPv3/$ServerName -create /Users/$UserName NFSHomeDirectory "/Network/Servers/$homeserver.sbepschools.org/Volumes/$homevol/$homedir"
-                if [[ $BuildingCode == $(echo "R165") ]]; then 
-                        dscl -u diradmin -P $diradminpwd /LDAPv3/$ServerName -create /Users/$UserName HomeDirectory "<home_dir><url>afp://$homeserver.sbepschools.org/$buildinghome</url><path>$gradyear/$UserName</path></home_dir>"
-                        else
-                        dscl -u diradmin -P $diradminpwd /LDAPv3/$ServerName -create /Users/$UserName HomeDirectory "<home_dir><url>afp://$homeserver.sbepschools.org/$buildinghome</url><path>$UserName</path></home_dir>"
-                fi
-                dseditgroup -o edit -n /LDAPv3/$ServerName -a $UserName -t user $schoolgroup
-                pwpolicy -a diradmin -p $diradminpwd -u $UserName -setpolicy "isDisabled=0 canModifyPasswordforSelf=0"
-                echo -e "$LastName, $FirstName $Building $Homeroom" >> $tempfile/createdODuser.txt
-                echo -e "$SID,$FirstName,$LastName,$Building,$Homeroom," >> $tempfile/createdusers$(date +%Y%m%d).csv
-                echo "Created user: $LastName, $FirstName"
+                            homedir="$buildinghome/$UserName"
+                    elif [ $BuildingCode == $(echo "R165") ]; then
+                            homedir="$buildinghome/$gradyear/$UserName"
             fi
+            dscl -u diradmin -P $diradminpwd /LDAPv3/$ServerName -create /Users/$UserName NFSHomeDirectory "/Network/Servers/$homeserver.sbepschools.org/Volumes/$homevol/$homedir"
+            if [[ $BuildingCode == $(echo "R165") ]]; then 
+                    dscl -u diradmin -P $diradminpwd /LDAPv3/$ServerName -create /Users/$UserName HomeDirectory "<home_dir><url>afp://$homeserver.sbepschools.org/$buildinghome</url><path>$gradyear/$UserName</path></home_dir>"
+                    else
+                    dscl -u diradmin -P $diradminpwd /LDAPv3/$ServerName -create /Users/$UserName HomeDirectory "<home_dir><url>afp://$homeserver.sbepschools.org/$buildinghome</url><path>$UserName</path></home_dir>"
+            fi
+        else
+            dscl -u diradmin -P $diradminpwd /LDAPv3/$ServerName -create /Users/$UserName
+            dscl -u diradmin -P $diradminpwd /LDAPv3/$ServerName -create /Users/$UserName UserShell /bin/bash
+            dscl -u diradmin -P $diradminpwd /LDAPv3/$ServerName -create /Users/$UserName RealName "$LastName, $FirstName"
+            dscl -u diradmin -P $diradminpwd /LDAPv3/$ServerName -create /Users/$UserName FirstName "$FirstName"
+            dscl -u diradmin -P $diradminpwd /LDAPv3/$ServerName -create /Users/$UserName LastName "$LastName"
+            dscl -u diradmin -P $diradminpwd /LDAPv3/$ServerName -create /Users/$UserName EMailAddress "$UserName@students.sbepschools.org"
+            dscl -u diradmin -P $diradminpwd /LDAPv3/$ServerName -create /Users/$UserName WeblogURI $(md5 <<< $SID)
+            dscl -u diradmin -P $diradminpwd /LDAPv3/$ServerName -create /Users/$UserName UniqueID $SID
+            dscl -u diradmin -P $diradminpwd /LDAPv3/$ServerName -passwd /Users/$UserName $SID
+            dscl -u diradmin -P $diradminpwd /LDAPv3/$ServerName -create /Users/$UserName PrimaryGroupID 20
+            dscl -u diradmin -P $diradminpwd /LDAPv3/$ServerName -create /Users/$UserName Keywords $Homeroom $Grade $BuildingCode $Building
+            if [[ $BuildingCode == $(echo "R167") ]] || [[ $BuildingCode == $(echo "R168") ]]; then
+                            homedir="$buildinghome/$UserName"
+                    elif [ $BuildingCode == $(echo "R165") ]; then
+                            homedir="$buildinghome/$gradyear/$UserName"
+            fi
+            dscl -u diradmin -P $diradminpwd /LDAPv3/$ServerName -create /Users/$UserName NFSHomeDirectory "/Network/Servers/$homeserver.sbepschools.org/Volumes/$homevol/$homedir"
+            if [[ $BuildingCode == $(echo "R165") ]]; then 
+                    dscl -u diradmin -P $diradminpwd /LDAPv3/$ServerName -create /Users/$UserName HomeDirectory "<home_dir><url>afp://$homeserver.sbepschools.org/$buildinghome</url><path>$gradyear/$UserName</path></home_dir>"
+                    else
+                    dscl -u diradmin -P $diradminpwd /LDAPv3/$ServerName -create /Users/$UserName HomeDirectory "<home_dir><url>afp://$homeserver.sbepschools.org/$buildinghome</url><path>$UserName</path></home_dir>"
+            fi
+            dseditgroup -o edit -n /LDAPv3/$ServerName -a $UserName -t user $schoolgroup
+            pwpolicy -a diradmin -p $diradminpwd -u $UserName -setpolicy "isDisabled=0 canModifyPasswordforSelf=0"
+            echo -e "$LastName, $FirstName $Building $Homeroom" >> $tempfile/createdODuser.txt
+            echo -e "$SID,$FirstName,$LastName,$Building,$Homeroom," >> $tempfile/createdusers$(date +%Y%m%d).csv
+            echo "Created user: $LastName, $FirstName"
         fi
     done < $CSVfile
     IFS="$OLDIFS"
